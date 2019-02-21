@@ -42,7 +42,7 @@ void sum_cols(float **A, float *b, int n, int m){
 }
 
 float vec_reduce(float *vec, int n){
-	float sum;
+	float sum = 0.0;
 	int i;
 	for(i=0;i<n;i++)
 		sum += vec[i];
@@ -55,4 +55,13 @@ float f_abs(float a){
 		return -1.0*a;
 	else
 		return a;
+}
+
+float SSE(float *x, float *y, int n){
+	float SSE = 0.0;
+	int i;
+
+	for(i=0;i<n;i++)
+		SSE += (x[i]-y[i])*(x[i]-y[i]);
+	return SSE;
 }

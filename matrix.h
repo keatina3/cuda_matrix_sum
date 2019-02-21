@@ -8,5 +8,6 @@ void sum_rows(float **A, float *b, int n, int m);
 void sum_cols(float **A, float *b, int n, int m);
 float vec_reduce(float *vec, int n);
 float f_abs(float a);
+float SSE(float *x, float *y, int n);
 
 #endif

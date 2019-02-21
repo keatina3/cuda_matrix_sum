@@ -3,6 +3,6 @@
 
 __global__ void sum_rows_gpu(float *A_vals, float *b, int n, int m);
 __global__ void sum_cols_gpu(float *A_vals, float *b, int n, int m);
-__global__ void sum_tot_gpu(float *A_vals, int n, int m);
+__global__ void vec_reduce_gpu(float *A_vals, float *b, int n, int m);
 
 #endif

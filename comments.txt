@@ -1,4 +1,0 @@
-returing through an extern function
-memcheck changes values
-reduce being slightly off
-first function takes way longer to run

@@ -4,11 +4,11 @@
 #include <sys/time.h>
 #include "matrix.h"
 
-#define BLOCK_SIZE 256
+#define BLOCK_SIZE 128
 
-extern int sum_rows_gpu(float *A_vals, float *row, int n, int m);
-extern int sum_cols_gpu(float *A_vals, float *col, int n, int m);
-extern int vec_reduce_gpu(float *vec, int n, float *sum);
+extern void sum_rows_gpu(float *A_vals, float *row, int n, int m, float *tau);
+extern void sum_cols_gpu(float *A_vals, float *col, int n, int m, float *tau);
+extern void vec_reduce_gpu(float *vec, int n, float *sum, float *tau);
 
 int block_size = BLOCK_SIZE;
 
@@ -18,8 +18,7 @@ int main(int argc, char **argv){
 	float **A, *A_vals, *row, *col, *rowGPU, *colGPU; 
 	float tot_sum, tot_sumGPU;
 	struct timeval start, end;
-	float tauCPU, tauGPU;
-	//int i;
+	float tauCPU, tauGPU, tauGPUohead;
 
 	while((option=getopt(argc,argv,"n:m:rtp"))!=-1){
 		switch(option){
@@ -72,14 +71,14 @@ int main(int argc, char **argv){
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	gettimeofday(&start,NULL);
-	sum_rows_gpu(A_vals, rowGPU, n, m);
+	sum_rows_gpu(A_vals, rowGPU, n, m, &tauGPU);
 	gettimeofday(&end,NULL);
-	tauGPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
+	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	printf("\n======================= Row Sum =====================\n");
 	printf("SSE of CPU vals vs GPU: %0.7f\n", SSE(row, rowGPU, n));
 	if(t){
-		printf("CPU time-taken: %0.7f; GPU-time-taken: %0.7f;\n",tauCPU,tauGPU);
+		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
 	/////////////////////////////////////////////////
@@ -91,14 +90,14 @@ int main(int argc, char **argv){
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	gettimeofday(&start,NULL);
-	sum_cols_gpu(A_vals, colGPU, n, m);
+	sum_cols_gpu(A_vals, colGPU, n, m, &tauGPU);
 	gettimeofday(&end,NULL);
-	tauGPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
+	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	printf("\n======================= Col Sum =====================\n");
 	printf("SSE of CPU vals vs GPU: %0.7f\n", SSE(col, colGPU, n));
 	if(t){
-		printf("CPU time-taken: %0.7f; GPU-time-taken: %0.7f;\n",tauCPU,tauGPU);
+		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
 	////////////////////////////////////////////////
@@ -110,8 +109,7 @@ int main(int argc, char **argv){
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	gettimeofday(&start,NULL);
-	//tot_sumGPU = vec_reduce_gpu(row, n);
-	vec_reduce_gpu(row, n, &tot_sumGPU);
+	vec_reduce_gpu(row, n, &tot_sumGPU, &tauGPU);
 	gettimeofday(&end,NULL);
 	tauGPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
@@ -119,15 +117,11 @@ int main(int argc, char **argv){
 	printf("CPU total sum: %f; GPU total sum: %f;\nerr: %0.7f%%;\n",
 										tot_sum,tot_sumGPU, f_abs(tot_sumGPU - tot_sum)/tot_sum);
 	if(t){
-		printf("CPU time-taken: %0.7f; GPU-time-taken: %0.7f;\n",tauCPU,tauGPU);
+		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
 	////////////////////////////////////////////////
 	printf("\n=================================================================\n\n");
-
-	//printf("row[0] = %f, rowGPU[0] = %f\n", row[0], rowGPU[0]);
-	//for(i=0;i<m;i++)
-	//	printf("col[%d] = %f, colGPU[0] = %f\n", i, col[i], colGPU[i]);
 
 	free(A); free(A_vals);
 	free(row); free(rowGPU);

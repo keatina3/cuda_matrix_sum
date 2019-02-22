@@ -1,5 +1,5 @@
-//#include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include "matrix_gpu.h"
 
 extern int block_size;
@@ -43,10 +43,9 @@ __global__ void calc_vec_reduce_gpu(float *vec, float *b, int n){
 		b[idx] += vec[(2*idx) + 2];
 }
 
-extern int sum_rows_gpu(float *A_vals, float *row, int n, int m){
+extern void sum_rows_gpu(float *A_vals, float *row, int n, int m, float *tau){
 	float *A_vals_d, *row_d;
-
-	//row = (float*)calloc(n,sizeof(float));
+	struct timeval start, end;
 
 	cudaMalloc( (void**)&A_vals_d, n*m*sizeof(float));
 	cudaMalloc( (void**)&row_d, n*sizeof(float));
@@ -56,43 +55,43 @@ extern int sum_rows_gpu(float *A_vals, float *row, int n, int m){
 	dim3 dimBlock(block_size);
 	dim3 dimGrid((n/dimBlock.x) + (!(n%dimBlock.x)?0:1));
 
+	gettimeofday(&start,NULL);
 	calc_sum_rows_gpu <<<dimGrid,dimBlock>>> (A_vals_d, row_d, n, m);
+	gettimeofday(&end,NULL);
+	
+	*tau = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 
 	cudaMemcpy(row, row_d, n*sizeof(float), cudaMemcpyDeviceToHost);
 	
-	//free(row);
 	cudaFree(A_vals_d); cudaFree(row_d);
-	
-	//printf("TESTING ROW FUNCTION CALL\n");
-	return 0;
 }
 
-extern int sum_cols_gpu(float *A_vals, float *col, int n, int m){
+extern void sum_cols_gpu(float *A_vals, float *col, int n, int m, float *tau){
 	float *A_vals_d, *col_d;
-
-	//col = (float*)calloc(m,sizeof(float));
+	struct timeval start, end;
 
 	cudaMalloc( (void**)&A_vals_d, n*m*sizeof(float));
 	cudaMalloc( (void**)&col_d, m*sizeof(float));
-
-	cudaMemcpy(A_vals_d, A_vals, n*m*sizeof(float), cudaMemcpyHostToDevice);
 	
+	cudaMemcpy(A_vals_d, A_vals, n*m*sizeof(float), cudaMemcpyHostToDevice);
+
 	dim3 dimBlock(block_size);
 	dim3 dimGrid((m/dimBlock.x) + (!(m%dimBlock.x)?0:1));
 
+	gettimeofday(&start,NULL);
 	calc_sum_cols_gpu <<<dimGrid,dimBlock>>> (A_vals_d, col_d, n, m);
-
+	gettimeofday(&end,NULL);
+	
+	*tau = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
+	
 	cudaMemcpy(col, col_d, m*sizeof(float), cudaMemcpyDeviceToHost);
-	
-	//free(col);
+
 	cudaFree(A_vals_d); cudaFree(col_d);
-	
-	//printf("TESTING COL FUNCTION CALL\n");
-	return 0;
 }
 
-extern float vec_reduce_gpu(float *vec, int n, float* sum2){
-	float sum, *vec_d;
+extern void vec_reduce_gpu(float *vec, int n, float* sum, float *tau){
+	float *vec_d;
+	struct timeval start, end;
 
 	cudaMalloc( (void**)&vec_d, n*sizeof(float));
 
@@ -101,15 +100,16 @@ extern float vec_reduce_gpu(float *vec, int n, float* sum2){
 	dim3 dimBlock(block_size);
 	dim3 dimGrid((n/dimBlock.x) + (!(n%dimBlock.x)?0:1));
 
+	gettimeofday(&start,NULL);
 	while(n > 1){
 		calc_vec_reduce_gpu <<<dimGrid,dimBlock>>> (vec_d, vec_d, n);
 		n /= 2;
 	}
-	cudaMemcpy(&sum, &vec_d[0], sizeof(float), cudaMemcpyDeviceToHost);
+	gettimeofday(&end,NULL);
+	
+	*tau = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
+	
+	cudaMemcpy(sum, &vec_d[0], sizeof(float), cudaMemcpyDeviceToHost);
 	
 	cudaFree(vec_d);
-	*sum2 = sum;
-	//printf("total sum = %f\n", *sum2);
-	//printf("TESTING ROW FUNCTION CALL\n");
-	return sum;
 }

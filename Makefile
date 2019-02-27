@@ -22,4 +22,4 @@ cu_objs: $(CU_SOURCES)
 .PHONY: clean
 
 clean:
-	$(RM) $(OBJECTS) $(CU_OBJECTS) $(TARGET)
+	$(RM) $(OBJECTS) $(CU_OBJECTS) $(TARGET) *.csv

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <string.h>
 #include <sys/time.h>
 #include "matrix.h"
 
@@ -10,11 +11,14 @@ extern void sum_rows_gpu(float *A_vals, float *row, int n, int m, float *tau);
 extern void sum_cols_gpu(float *A_vals, float *col, int n, int m, float *tau);
 extern void vec_reduce_gpu(float *vec, int n, float *sum, float *tau);
 
+int is_empty(FILE* file);
+void write_times(char* funcname, double tauCPU, double tauGPU, double tauGPUohead, int block, int m, int n);
+
 int block_size = BLOCK_SIZE;
 
 int main(int argc, char **argv){
 	int m = 10, n = 10;
-	int t = 0, r = 0, p = 0, option = 0;
+	int t = 0, r = 0, p = 0, w = 0, option = 0;
 	float **A, *A_vals, *row, *col, *rowGPU, *colGPU; 
 	float tot_sum, tot_sumGPU;
 	struct timeval start, end;
@@ -31,6 +35,8 @@ int main(int argc, char **argv){
 			case 't': t = 1;
 				break;
 			case 'p': p = 1;
+				break;
+			case 'w': w = 1;
 				break;
 			default:
 				printf("Incorrect options entered!\n");
@@ -81,6 +87,8 @@ int main(int argc, char **argv){
 		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
+	if(w)
+		write_times("row_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n);
 	/////////////////////////////////////////////////
 
 	//////////////// SUM COL ////////////////////////
@@ -100,6 +108,8 @@ int main(int argc, char **argv){
 		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
+	if(w)
+		write_times("col_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n);
 	////////////////////////////////////////////////
 
 	//////////////// VEC RED ///////////////////////
@@ -120,6 +130,8 @@ int main(int argc, char **argv){
 		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
+	if(w)
+		write_times("reduce.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n);
 	////////////////////////////////////////////////
 	printf("\n=================================================================\n\n");
 
@@ -128,4 +140,30 @@ int main(int argc, char **argv){
 	free(col); free(colGPU);
 
 	return 0;
+}
+
+int is_empty(FILE* file){
+	size_t size;
+
+	fseek(file, 0, SEEK_END);
+	size = ftell(file);
+	
+	if(size)
+		return 0;
+	else
+		return 1;
+}
+
+void write_times(char* fname, double tauCPU, double tauGPU, double tauGPUohead, int block, int m, int n){
+	FILE* fptr;
+	
+	fptr = fopen(fname, "a+");
+	if(!fptr)
+		printf("Couldn't open file %s\n",fname);
+
+	if(is_empty(fptr))
+		fprintf(fptr, "Block-size,NxM,CPU time,GPU time,GPU w/ o/head, Speedup\n");
+	fprintf(fptr, "%d,%dx%d,%f,%f,%f,%f\n", block, m, n, tauCPU, tauGPU, tauGPUohead, tauCPU/tauGPU);
+
+	fclose(fptr);
 }

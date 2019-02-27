@@ -43,7 +43,7 @@ __global__ void calc_vec_reduce_gpu(double *vec, double *b, int n){
 		b[idx] += vec[(2*idx) + 2];
 }
 
-extern void sum_rows_gpu(double *A_vals, double *row, int n, int m, float *tau){
+extern void sum_rows_gpu(double *A_vals, double *row, int n, int m, double *tau){
 	double *A_vals_d, *row_d;
 	struct timeval start, end;
 
@@ -66,7 +66,7 @@ extern void sum_rows_gpu(double *A_vals, double *row, int n, int m, float *tau){
 	cudaFree(A_vals_d); cudaFree(row_d);
 }
 
-extern void sum_cols_gpu(double *A_vals, double *col, int n, int m, float *tau){
+extern void sum_cols_gpu(double *A_vals, double *col, int n, int m, double *tau){
 	double *A_vals_d, *col_d;
 	struct timeval start, end;
 
@@ -89,7 +89,7 @@ extern void sum_cols_gpu(double *A_vals, double *col, int n, int m, float *tau){
 	cudaFree(A_vals_d); cudaFree(col_d);
 }
 
-extern void vec_reduce_gpu(double *vec, int n, double* sum, float *tau){
+extern void vec_reduce_gpu(double *vec, int n, double* sum, double *tau){
 	double *vec_d;
 	struct timeval start, end;
 

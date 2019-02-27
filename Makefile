@@ -21,5 +21,8 @@ cu_objs: $(CU_SOURCES)
 
 .PHONY: clean
 
+test: all
+	./test.sh
+
 clean:
 	$(RM) $(OBJECTS) $(CU_OBJECTS) $(TARGET) *.csv

@@ -1,9 +1,9 @@
 #ifndef _MAT_GPU_H
 #ifdef __cplusplus
 extern "C" {
-	void sum_rows_gpu(float *vals, float *row, int n, int m, float *tau);
-	void sum_cols_gpu(float *A_vals, float *col, int n, int m, float *tau);
-	void vec_reduce_gpu(float *vec, int n, float *sum, float *tau);
+	void sum_rows_gpu(float *vals, float *row, int block, int n, int m, float *tau);
+	void sum_cols_gpu(float *vals, float *col, int block, int n, int m, float *tau);
+	void vec_reduce_gpu(float *vec, int block_size, int n, float *sum, float *tau);
 }
 #endif
 

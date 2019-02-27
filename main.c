@@ -7,28 +7,29 @@
 
 #define BLOCK_SIZE 128
 
-extern void sum_rows_gpu(float *A_vals, float *row, int n, int m, float *tau);
-extern void sum_cols_gpu(float *A_vals, float *col, int n, int m, float *tau);
-extern void vec_reduce_gpu(float *vec, int n, float *sum, float *tau);
+extern void sum_rows_gpu(float *A_vals, float *row, int block_size, int n, int m, float *tau);
+extern void sum_cols_gpu(float *A_vals, float *col, int block_size, int n, int m, float *tau);
+extern void vec_reduce_gpu(float *vec, int block_size, int n, float *sum, float *tau);
 
 int is_empty(FILE* file);
-void write_times(char* funcname, double tauCPU, double tauGPU, double tauGPUohead, int block, int m, int n);
-
-int block_size = BLOCK_SIZE;
+void write_times(char* funcname, float tauCPU, float tauGPU, float tauGPUohead, int block, int m, int n, float err);
 
 int main(int argc, char **argv){
 	int m = 10, n = 10;
 	int t = 0, r = 0, p = 0, w = 0, option = 0;
+	int block_size=BLOCK_SIZE;
 	float **A, *A_vals, *row, *col, *rowGPU, *colGPU; 
 	float tot_sum, tot_sumGPU;
 	struct timeval start, end;
-	float tauCPU, tauGPU, tauGPUohead;
+	float tauCPU, tauGPU, tauGPUohead, sse;
 
-	while((option=getopt(argc,argv,"n:m:rtp"))!=-1){
+	while((option=getopt(argc,argv,"n:m:b:rtwp"))!=-1){
 		switch(option){
 			case 'n': n = atoi(optarg);
 				break;
 			case 'm': m = atoi(optarg);
+				break;
+			case 'b': block_size = atoi(optarg);
 				break;
 			case 'r': r = 1;
 				break;
@@ -77,18 +78,19 @@ int main(int argc, char **argv){
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	gettimeofday(&start,NULL);
-	sum_rows_gpu(A_vals, rowGPU, n, m, &tauGPU);
+	sum_rows_gpu(A_vals, rowGPU, block_size, n, m, &tauGPU);
 	gettimeofday(&end,NULL);
 	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
+	sse = SSE(row,rowGPU,n);
 	
 	printf("\n======================= Row Sum =====================\n");
-	printf("SSE of CPU vals vs GPU: %0.7f\n", SSE(row, rowGPU, n));
+	printf("SSE of CPU vals vs GPU: %0.7f\n", sse);
 	if(t){
 		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
 	if(w)
-		write_times("row_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n);
+		write_times("row_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n, sse);
 	/////////////////////////////////////////////////
 
 	//////////////// SUM COL ////////////////////////
@@ -98,18 +100,19 @@ int main(int argc, char **argv){
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	gettimeofday(&start,NULL);
-	sum_cols_gpu(A_vals, colGPU, n, m, &tauGPU);
+	sum_cols_gpu(A_vals, colGPU, block_size, n, m, &tauGPU);
 	gettimeofday(&end,NULL);
 	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
-	
+	sse = SSE(col,colGPU,n);
+
 	printf("\n======================= Col Sum =====================\n");
-	printf("SSE of CPU vals vs GPU: %0.7f\n", SSE(col, colGPU, n));
+	printf("SSE of CPU vals vs GPU: %0.7f\n", sse);
 	if(t){
 		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
 	if(w)
-		write_times("col_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n);
+		write_times("col_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n, sse);
 	////////////////////////////////////////////////
 
 	//////////////// VEC RED ///////////////////////
@@ -119,19 +122,19 @@ int main(int argc, char **argv){
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	gettimeofday(&start,NULL);
-	vec_reduce_gpu(row, n, &tot_sumGPU, &tauGPU);
+	vec_reduce_gpu(row, block_size, n, &tot_sumGPU, &tauGPU);
 	gettimeofday(&end,NULL);
-	tauGPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
+	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	printf("\n======================= Reduce ======================\n");
 	printf("CPU total sum: %f; GPU total sum: %f;\nerr: %0.7f%%;\n",
-										tot_sum,tot_sumGPU, f_abs(tot_sumGPU - tot_sum)/tot_sum);
+										tot_sum,tot_sumGPU, 100*f_abs(tot_sumGPU - tot_sum)/tot_sum);
 	if(t){
 		printf("CPU time-taken: %0.7f;\nGPU-time-taken: %0.7f; GPU w o/head: %0.7f;\n",tauCPU,tauGPU,tauGPUohead);
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
 	if(w)
-		write_times("reduce.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n);
+		write_times("reduce.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n, 100*f_abs(tot_sumGPU-tot_sum)/tot_sum);
 	////////////////////////////////////////////////
 	printf("\n=================================================================\n\n");
 
@@ -154,7 +157,7 @@ int is_empty(FILE* file){
 		return 1;
 }
 
-void write_times(char* fname, double tauCPU, double tauGPU, double tauGPUohead, int block, int m, int n){
+void write_times(char* fname, float tauCPU, float tauGPU, float tauGPUohead, int block, int m, int n, float err){
 	FILE* fptr;
 	
 	fptr = fopen(fname, "a+");
@@ -162,8 +165,8 @@ void write_times(char* fname, double tauCPU, double tauGPU, double tauGPUohead, 
 		printf("Couldn't open file %s\n",fname);
 
 	if(is_empty(fptr))
-		fprintf(fptr, "Block-size,NxM,CPU time,GPU time,GPU w/ o/head, Speedup\n");
-	fprintf(fptr, "%d,%dx%d,%f,%f,%f,%f\n", block, m, n, tauCPU, tauGPU, tauGPUohead, tauCPU/tauGPU);
+		fprintf(fptr, "Block-size,NxM,CPU time,GPU time,GPU w/ o/head,Speedup,SSE/Err\n");
+	fprintf(fptr, "%d,%dx%d,%f,%f,%f,%f,%f\n", block, m, n, tauCPU, tauGPU, tauGPUohead, tauCPU/tauGPU, err);
 
 	fclose(fptr);
 }

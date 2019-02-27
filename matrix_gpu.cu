@@ -2,7 +2,7 @@
 #include <sys/time.h>
 #include "matrix_gpu.h"
 
-extern int block_size;
+//extern int block_size;
 
 __global__ void calc_sum_rows_gpu(float *A_vals, float *b, int n, int m){
 	int idx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -43,7 +43,7 @@ __global__ void calc_vec_reduce_gpu(float *vec, float *b, int n){
 		b[idx] += vec[(2*idx) + 2];
 }
 
-extern void sum_rows_gpu(float *A_vals, float *row, int n, int m, float *tau){
+extern void sum_rows_gpu(float *A_vals, float *row, int block_size, int n, int m, float *tau){
 	float *A_vals_d, *row_d;
 	struct timeval start, end;
 
@@ -66,7 +66,7 @@ extern void sum_rows_gpu(float *A_vals, float *row, int n, int m, float *tau){
 	cudaFree(A_vals_d); cudaFree(row_d);
 }
 
-extern void sum_cols_gpu(float *A_vals, float *col, int n, int m, float *tau){
+extern void sum_cols_gpu(float *A_vals, float *col, int block_size, int n, int m, float *tau){
 	float *A_vals_d, *col_d;
 	struct timeval start, end;
 
@@ -89,7 +89,7 @@ extern void sum_cols_gpu(float *A_vals, float *col, int n, int m, float *tau){
 	cudaFree(A_vals_d); cudaFree(col_d);
 }
 
-extern void vec_reduce_gpu(float *vec, int n, float* sum, float *tau){
+extern void vec_reduce_gpu(float *vec, int block_size, int n, float* sum, float *tau){
 	float *vec_d;
 	struct timeval start, end;
 

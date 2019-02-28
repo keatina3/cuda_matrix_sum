@@ -2,8 +2,6 @@
 #include <sys/time.h>
 #include "matrix_gpu.h"
 
-//extern int block_size;
-
 __global__ void calc_sum_rows_gpu(float *A_vals, float *b, int n, int m){
 	int idx = blockIdx.x*blockDim.x + threadIdx.x;
 	int i;

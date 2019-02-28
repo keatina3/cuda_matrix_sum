@@ -12,7 +12,7 @@ extern void sum_cols_gpu(float *A_vals, float *col, int block_size, int n, int m
 extern void vec_reduce_gpu(float *vec, int block_size, int n, float *sum, float *tau);
 
 int is_empty(FILE* file);
-void write_times(char* funcname, float tauCPU, float tauGPU, float tauGPUohead, int block, int m, int n, float err);
+void write_times(char* funcname, float tauCPU, float tauGPU, float tauGPUohead, int block, int n, int m, float err);
 
 int main(int argc, char **argv){
 	int m = 10, n = 10;
@@ -103,7 +103,7 @@ int main(int argc, char **argv){
 	sum_cols_gpu(A_vals, colGPU, block_size, n, m, &tauGPU);
 	gettimeofday(&end,NULL);
 	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
-	sse = SSE(col,colGPU,n);
+	sse = SSE(col,colGPU,m);
 
 	printf("\n======================= Col Sum =====================\n");
 	printf("SSE of CPU vals vs GPU: %0.7f\n", sse);
@@ -122,7 +122,7 @@ int main(int argc, char **argv){
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
 	gettimeofday(&start,NULL);
-	vec_reduce_gpu(row, block_size, n, &tot_sumGPU, &tauGPU);
+	vec_reduce_gpu(rowGPU, block_size, n, &tot_sumGPU, &tauGPU);
 	gettimeofday(&end,NULL);
 	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
@@ -134,7 +134,7 @@ int main(int argc, char **argv){
 		printf("Speedup: %0.7f\n", tauCPU/tauGPU);
 	}
 	if(w)
-		write_times("reduce.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n, 100*f_abs(tot_sumGPU-tot_sum)/tot_sum);
+		write_times("reduce.csv", tauCPU, tauGPU, tauGPUohead, block_size, n, m, 100*f_abs(tot_sumGPU-tot_sum)/tot_sum);
 	////////////////////////////////////////////////
 	printf("\n=================================================================\n\n");
 
@@ -157,7 +157,7 @@ int is_empty(FILE* file){
 		return 1;
 }
 
-void write_times(char* fname, float tauCPU, float tauGPU, float tauGPUohead, int block, int m, int n, float err){
+void write_times(char* fname, float tauCPU, float tauGPU, float tauGPUohead, int block, int n, int m, float err){
 	FILE* fptr;
 	
 	fptr = fopen(fname, "a+");
@@ -166,7 +166,7 @@ void write_times(char* fname, float tauCPU, float tauGPU, float tauGPUohead, int
 
 	if(is_empty(fptr))
 		fprintf(fptr, "Block-size,NxM,CPU time,GPU time,GPU w/ o/head,Speedup,SSE/Err\n");
-	fprintf(fptr, "%d,%dx%d,%f,%f,%f,%f,%f\n", block, m, n, tauCPU, tauGPU, tauGPUohead, tauCPU/tauGPU, err);
+	fprintf(fptr, "%d,%dx%d,%f,%f,%f,%f,%f\n", block, n, m, tauCPU, tauGPU, tauGPUohead, tauCPU/tauGPU, err);
 
 	fclose(fptr);
 }

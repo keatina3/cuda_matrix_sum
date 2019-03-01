@@ -7,12 +7,13 @@
 
 #define BLOCK_SIZE 128
 
+// external functions in CU code //
 extern void sum_rows_gpu(float *A_vals, float *row, int block_size, int n, int m, float *tau);
 extern void sum_cols_gpu(float *A_vals, float *col, int block_size, int n, int m, float *tau);
 extern void vec_reduce_gpu(float *vec, int block_size, int n, float *sum, float *tau);
 
-int is_empty(FILE* file);
-void write_times(char* funcname, float tauCPU, float tauGPU, float tauGPUohead, int block, int n, int m, float err);
+int is_empty(FILE* file);	// checks if file is empty //
+void write_times(char* funcname, float tauCPU, float tauGPU, float tauGPUohead, int block, int n, int m, float err);		// writes results to CSV //
 
 int main(int argc, char **argv){
 	int m = 10, n = 10;
@@ -35,9 +36,9 @@ int main(int argc, char **argv){
 				break;
 			case 't': t = 1;
 				break;
-			case 'p': p = 1;
+			case 'p': p = 1;	// to print matrix //
 				break;
-			case 'w': w = 1;
+			case 'w': w = 1;	// to write results to file //
 				break;
 			default:
 				printf("Incorrect options entered!\n");
@@ -49,19 +50,22 @@ int main(int argc, char **argv){
 		return 1;
 	}
 
+	// setting seed //
 	gettimeofday(&start, NULL);
 	if(r)
 		srand48(start.tv_usec);
 	else
 		srand48(123456);
 
+	// allocating memory for matrix and row/col sums //
 	A = (float**)malloc(n*sizeof(float*));
 	A_vals = (float*)calloc(n*m,sizeof(float));
 	row = (float*)calloc(n,sizeof(float));
 	col = (float*)calloc(m,sizeof(float));
 	rowGPU = (float*)calloc(n,sizeof(float));
 	colGPU = (float*)calloc(m,sizeof(float));
-
+	
+	// allocating vals && initialising pointers //
 	alloc_mat(A_vals, A, n, m);
 	assign_vals(A_vals, n, m);
 	printf("\n=================================================================\n");
@@ -72,17 +76,20 @@ int main(int argc, char **argv){
 	}
 	
 	//////////////// SUM ROW ////////////////////////
+	// timing serial code //
 	gettimeofday(&start,NULL);
 	sum_rows(A, row, n, m);
 	gettimeofday(&end,NULL);
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
-	
+
+	// timing GPU code (including overhead) //
 	gettimeofday(&start,NULL);
 	sum_rows_gpu(A_vals, rowGPU, block_size, n, m, &tauGPU);
 	gettimeofday(&end,NULL);
 	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
-	sse = SSE(row,rowGPU,n);
+	sse = SSE(row,rowGPU,n);	// SSE for error checking //
 	
+	// printing output //
 	printf("\n======================= Row Sum =====================\n");
 	printf("SSE of CPU vals vs GPU: %0.7f\n", sse);
 	if(t){
@@ -93,18 +100,22 @@ int main(int argc, char **argv){
 		write_times("row_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n, sse);
 	/////////////////////////////////////////////////
 
+
 	//////////////// SUM COL ////////////////////////
+	// timing serial code //
 	gettimeofday(&start,NULL);
 	sum_cols(A, col, n, m);
 	gettimeofday(&end,NULL);
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
+	// timing GPU code (including overhead) //
 	gettimeofday(&start,NULL);
 	sum_cols_gpu(A_vals, colGPU, block_size, n, m, &tauGPU);
 	gettimeofday(&end,NULL);
 	tauGPUohead = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	sse = SSE(col,colGPU,m);
 
+	// printing output //
 	printf("\n======================= Col Sum =====================\n");
 	printf("SSE of CPU vals vs GPU: %0.7f\n", sse);
 	if(t){
@@ -115,12 +126,15 @@ int main(int argc, char **argv){
 		write_times("col_sum.csv", tauCPU, tauGPU, tauGPUohead, block_size, m, n, sse);
 	////////////////////////////////////////////////
 
+
 	//////////////// VEC RED ///////////////////////
+	// timing serial code //
 	gettimeofday(&start,NULL);
 	tot_sum = vec_reduce(row, n);
 	gettimeofday(&end,NULL);
 	tauCPU = (float)(end.tv_sec-start.tv_sec) + (float)(end.tv_usec - start.tv_usec)/(1E06);
 	
+	//timing GPU code //
 	gettimeofday(&start,NULL);
 	vec_reduce_gpu(rowGPU, block_size, n, &tot_sumGPU, &tauGPU);
 	gettimeofday(&end,NULL);
@@ -138,6 +152,7 @@ int main(int argc, char **argv){
 	////////////////////////////////////////////////
 	printf("\n=================================================================\n\n");
 
+	// freeing allocated memory //
 	free(A); free(A_vals);
 	free(row); free(rowGPU);
 	free(col); free(colGPU);

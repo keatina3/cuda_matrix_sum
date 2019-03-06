@@ -1,5 +1,4 @@
 <article data-history-node-id="1677" role="article" about="/node/1677" class="node node--type-assignment node--view-mode-full clearfix">
-<header>
 <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><h2>Matrix add up and reduce - parallel calculation</h2>
 
 <p>The goal of this assignment is to reduce a matrix to a single value, adding its values up, by writing a basic CUDA implemention. ===================================================================================================================</p>
